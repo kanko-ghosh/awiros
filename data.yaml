@@ -1,0 +1,8 @@
+names:
+- With
+- Without
+nc: 2
+
+test: /Users/kankoghosh/workstation/research2.0/Helmet/archive/test/images
+train: /Users/kankoghosh/workstation/research2.0/Helmet/archive/train/images
+val: /Users/kankoghosh/workstation/research2.0/Helmet/archive/val/images
