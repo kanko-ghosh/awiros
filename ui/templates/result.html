@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video Processing Result</title>
+    <!-- Include Bootstrap CSS (you may need to adjust the path) -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body class="bg-dark text-white"> <!-- Apply dark mode to the entire body -->
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-12 text-center">
+                <h1 class="display-4">Processed Video</h1>
+            </div>
+        </div>
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8">
+                <div class="embed-responsive embed-responsive-16by9">
+                    <video controls class="embed-responsive-item">
+                        <source src="{{ url_for('processed_video', filename=processed_video) }}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12 text-center">
+                <a href="/" class="btn btn-primary">Back to Upload</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include Bootstrap JS (optional, for certain Bootstrap features) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
