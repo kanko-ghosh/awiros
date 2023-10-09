@@ -7,11 +7,18 @@ import time
 import tensorflow as tf
 print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
+# cap = cv2.VideoCapture(0)
+# cap.set(3, 640)
+# cap.set(4, 480)
+# fps = cap.get(cv2.CAP_PROP_FPS)
+
 
 class HelmetIO:
-    def __init__(self,yolo_model_path,classif_model_path):
+    def __init__(self,yolo_model_path, full_body_yolo_model_path, classif_model_path,mob_classif_model_path):
         self.yolo_model = YOLO(yolo_model_path)
+        self.full_body_yolo_model = YOLO(full_body_yolo_model_path)
         self.classif_model = tf.keras.models.load_model(classif_model_path)
+        self.mob_classif_model = tf.keras.models.load_model(mob_classif_model_path)
         self.classNames = ["person"]
 
     def process_yolo_resut(self, results,img):
@@ -44,6 +51,8 @@ class HelmetIO:
             print("No person found")
         return ls, dim
 
+    
+
     def classify_person_list(self, person_ls):
         res = []
         for person in person_ls:
@@ -54,13 +63,19 @@ class HelmetIO:
             res.append("Wearing Helmet" if pred[0][0] < 0.3 else "Not Wearing Helmet ... Chacha Bidhayak Hai")
         return res
 
-    def annotate_frame(self, frame, dim, classif_result):
+    def classify_mobile_usage(self, person_ls):
+        res = []
+        for person in person_ls:
+            person = cv2.resize(person, (128, 128))
+            person = np.reshape(person, (1, 128, 128, 3))
+            person = person / 255.0
+            pred = self.mob_classif_model(person, training=False)
+            res.append("No Mobile usage" if pred[0][0] < 0.9 else "Using Mobile ... Chacha Bidhayak Hai")
+        return res
+
+    def annotate_frame(self, frame, dim, classif_result, font = cv2.FONT_HERSHEY_SIMPLEX, fontScale = 1, color = (255, 0, 0),thickness = 2):
         for classif_res, d in zip(classif_result, dim):
             org = [d[0], d[1]]
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            fontScale = 1
-            color = (255, 0, 0)
-            thickness = 2
             cv2.putText(frame, classif_res, org, font, fontScale, color, thickness)
         return frame
 
@@ -93,7 +108,8 @@ class HelmetIO:
         cap.set(3, 640)
         cap.set(4, 480)
         fps = cap.get(cv2.CAP_PROP_FPS)
-        frames = []
+        
+        frame2s = []
         # Calculate the frame skip interval to achieve the target FPS
         frame_skip_interval = int(fps / read_fps)
         print("Frame skip interval: " + str(frame_skip_interval))
@@ -112,33 +128,45 @@ class HelmetIO:
                     break
                 print("Running yolo ...")
                 results = self.yolo_model(img, stream=True, verbose=False)
+                full_body_results = self.full_body_yolo_model(img, stream=True, verbose=False)
+
+                # For facial recognition for helmet usage
                 print("Processing yolo result ...")
                 person_ls, dim = self.process_yolo_resut(results,img)
                 print("Classifying person list ...")
                 classif_result = self.classify_person_list(person_ls)
                 print("Annotating frame ...")
-                frame = self.annotate_frame(img, dim, classif_result)
-                frames.append(frame)
+                frame1 = self.annotate_frame(img, dim, classif_result)
+
+                # For full body recognition for mobile usage
+                print("Processing full body yolo result ...")
+                person_ls, dim = self.process_yolo_resut(full_body_results,img)
+                print("Classifying person list ...")
+                classif_result = self.classify_mobile_usage(person_ls)
+                print("Annotating frame ...")
+                frame2 = self.annotate_frame(frame1, dim, classif_result,color = (0, 255, 0),thickness = 3)
+
+                if src_path == 0:
+                    cv2.imshow('Webcam', frame2)
+                    cv2.waitKey(1)
+                    
+                frame2s.append(frame2)
+
             except Exception as e:
                 print(e)
-                print("LOLLOLLOL")
                 break
         print("Done reading frames.")
         cap.release()
-        frames = np.array(frames)
+        frame2s = np.array(frame2s)
 
         # Writing the video
         print("Writing video in original fps ...")
-        self.write_frames_to_video(frames, dest_path, fps, (640, 480))
+        self.write_frames_to_video(frame2s, dest_path, fps, (640, 480))
         return dest_path
     
 
-
-
-
-
 if __name__ == "__main__":
     print("Starting...")
-    hi = HelmetIO(yolo_model_path="./models/debas_is_the_goat_model.pt",classif_model_path="./models/hel0_model.h5")
-    hi.convert_v_to_v(src_path="./data/test3.mov", dest_path="./data/output.mp4", read_fps=1.0)
+    hi = HelmetIO(yolo_model_path="./models/debas_is_the_goat_model.pt",full_body_yolo_model_path ="./models/yolov8m.pt", classif_model_path="./models/hel0_model.h5", mob_classif_model_path="./models/mob0_model.h5")
+    hi.convert_v_to_v(src_path=0, dest_path="./data/output.mp4", read_fps=1.0)
     print("Kabhi Alvida Na Kehna")

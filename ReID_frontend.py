@@ -9,7 +9,7 @@ cap.set(3, 640)
 cap.set(4, 480)
 
 # model
-model = YOLO("yolo-Weights/yolov8n.pt")
+model = YOLO("v0/models/debas_is_the_goat_model.pt")
 
 # object classes
 classNames = ["person"]
@@ -77,8 +77,8 @@ while True:
     except:
         print(img.shape)
         exit()
-    if cv2.waitKey(1) == ord('q'):
-        break
+    # if cv2.waitKey(1) == ord('q'):
+    #     break
 
     count += 1
 
