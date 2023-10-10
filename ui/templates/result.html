@@ -15,10 +15,7 @@
         <div class="row justify-content-center">
             <div class="col-12 col-md-8">
                 <div class="embed-responsive embed-responsive-16by9">
-                    <video controls class="embed-responsive-item">
-                        <source src="{{ url_for('processed_video', filename=processed_video) }}" type="video/mp4">
-                        Your browser does not support the video tag.
-                    </video>
+                    <img class="embed-responsive-item" src="{{ url_for('processed_video', filename=processed_video) }}" alt="GIF">
                 </div>
             </div>
         </div>
