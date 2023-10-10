@@ -5,6 +5,12 @@ import math
 import numpy as np
 import time
 import tensorflow as tf
+import PIL
+import numpy as np
+import torch
+import torch.nn as nn
+from torchvision import transforms, models
+
 print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 # cap = cv2.VideoCapture(0)
@@ -12,14 +18,29 @@ print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 # cap.set(4, 480)
 # fps = cap.get(cv2.CAP_PROP_FPS)
 
+def load_mob_classif_torch_model(mob_classif_model_path):
+    # Load the trained model
+    print("Loading mob model ...")
+    model_val = models.resnet18(pretrained=False)
+    model_val.fc = nn.Linear(model_val.fc.in_features, 2)
+    model_val.load_state_dict(torch.load(mob_classif_model_path, map_location=torch.device('cpu')))
+    model_val.eval()
+    return model_val
+
 
 class HelmetIO:
     def __init__(self,yolo_model_path, full_body_yolo_model_path, classif_model_path,mob_classif_model_path):
         self.yolo_model = YOLO(yolo_model_path)
         self.full_body_yolo_model = YOLO(full_body_yolo_model_path)
         self.classif_model = tf.keras.models.load_model(classif_model_path)
-        self.mob_classif_model = tf.keras.models.load_model(mob_classif_model_path)
+        self.mob_classif_model = load_mob_classif_torch_model(mob_classif_model_path)
+        print("Models loaded")
         self.classNames = ["person"]
+        self.transform = transforms.Compose([
+                transforms.Resize((128, 128)),
+                transforms.ToTensor(),
+                transforms.Lambda(lambda x: x / 255.0),  # Scale pixel values to [0, 1]
+            ])
 
     def process_yolo_resut(self, results,img):
         ls = []
@@ -66,12 +87,19 @@ class HelmetIO:
     def classify_mobile_usage(self, person_ls):
         res = []
         for person in person_ls:
-            person = cv2.resize(person, (128, 128))
-            person = np.reshape(person, (1, 128, 128, 3))
-            person = person / 255.0
-            pred = self.mob_classif_model(person, training=False)
-            res.append("No Mobile usage" if pred[0][0] < 0.9 else "Using Mobile ... Chacha Bidhayak Hai")
+            person = cv2.cvtColor(person, cv2.COLOR_BGR2RGB)
+            person = PIL.Image.fromarray(person).convert("RGB")
+
+            with torch.no_grad():   
+                person = self.transform(person)
+                person = person.unsqueeze(0)
+                output = self.mob_classif_model(person)
+
+            _,predicted_class = torch.max(output.data, 1)
+            pred = predicted_class.item()
+            res.append("No Mobile usage" if pred == 0 else "Using Mobile ... Chacha Bidhayak Hai")
         return res
+    
 
     def annotate_frame(self, frame, dim, classif_result, font = cv2.FONT_HERSHEY_SIMPLEX, fontScale = 1, color = (255, 0, 0),thickness = 2):
         for classif_res, d in zip(classif_result, dim):
@@ -167,6 +195,6 @@ class HelmetIO:
 
 if __name__ == "__main__":
     print("Starting...")
-    hi = HelmetIO(yolo_model_path="./models/debas_is_the_goat_model.pt",full_body_yolo_model_path ="./models/yolov8m.pt", classif_model_path="./models/hel0_model.h5", mob_classif_model_path="./models/mob0_model.h5")
+    hi = HelmetIO(yolo_model_path="./models/debas_is_the_goat_model.pt",full_body_yolo_model_path ="./models/yolov8m.pt", classif_model_path="./models/hel0_model.h5", mob_classif_model_path="models/model16.pt")
     hi.convert_v_to_v(src_path=0, dest_path="./data/output.mp4", read_fps=1.0)
     print("Kabhi Alvida Na Kehna")
